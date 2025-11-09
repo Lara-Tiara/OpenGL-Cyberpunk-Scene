@@ -1,0 +1,4 @@
+Cannot generate into D:\TCD\Computer-Graphics\Lab4\lab4_a
+It was created with incompatible generator 'Visual Studio 17 2022'
+
+Please either delete it manually or select another generation directory

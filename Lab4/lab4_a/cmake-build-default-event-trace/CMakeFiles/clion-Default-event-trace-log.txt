@@ -1,0 +1,13 @@
+"D:\CLion 2025.2.4\bin\cmake\win\x64\bin\cmake.exe" -G "Visual Studio 17 2022" --profiling-format=google-trace --profiling-output=CMakeFiles\clion-event-trace.json -S D:\TCD\Computer-Graphics\Lab4\lab4_a -B D:\TCD\Computer-Graphics\Lab4\lab4_a\cmake-build-default-event-trace
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.19045.
+CMake Error at external/glfw-3.1.2/CMakeLists.txt:3 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+
+
+-- Configuring incomplete, errors occurred!
