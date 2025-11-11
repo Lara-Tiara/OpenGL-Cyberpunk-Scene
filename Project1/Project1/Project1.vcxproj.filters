@@ -74,6 +74,8 @@
     <None Include="lib\glfw3.dll" />
     <None Include="1.model_loading.fs" />
     <None Include="1.model_loading.vs" />
+    <None Include="ground.vs" />
+    <None Include="ground.fs" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3dll.lib" />

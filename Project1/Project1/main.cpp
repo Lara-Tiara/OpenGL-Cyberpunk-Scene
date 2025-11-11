@@ -16,6 +16,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
+unsigned int setupGroundPlane();
 
 // settings
 const unsigned int SCR_WIDTH = 1920;
@@ -82,6 +83,8 @@ int main()
         "1.model_loading.vs",
         "1.model_loading.fs");
 
+    Shader groundShader("ground.vs", "ground.fs");
+
     // load models
     // -----------
     //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/futuristic_city/scene.gltf");
@@ -91,6 +94,9 @@ int main()
     Model transboxModel("D:/TCD/Computer-Graphics/Project1/resources/models/transformer_box/scene.gltf");
     Model girlModel("D:/TCD/Computer-Graphics/Project1/resources/models/character_free_model/scene.gltf");
     //Model cityModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_city/scene.glb");
+
+    // Setup ground plane
+    unsigned int groundVAO = setupGroundPlane();
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -114,12 +120,25 @@ int main()
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // don't forget to enable shader before setting uniforms
-        ourShader.use();
-
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
         glm::mat4 view = camera.GetViewMatrix();
+
+        // Render ground
+        groundShader.use();
+        groundShader.setMat4("projection", projection);
+        groundShader.setMat4("view", view);
+        glm::mat4 groundModel = glm::mat4(1.0f);
+        groundModel = glm::translate(groundModel, glm::vec3(0.0f, -10.0f, 0.0f));
+        groundShader.setMat4("model", groundModel);
+        groundShader.setVec3("groundColor", glm::vec3(0.4f, 0.3f, 0.2f));
+        groundShader.setVec3("lightDir", glm::vec3(-0.3f, -1.0f, -0.3f));
+
+        glBindVertexArray(groundVAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        ourShader.use();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
@@ -167,6 +186,50 @@ int main()
     // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
+}
+
+unsigned int setupGroundPlane()
+{
+    // Ground plane vertices (large plane)
+    float groundVertices[] = {
+        // positions          // normals           // texture coords
+        -200.0f, 0.0f, -200.0f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+         200.0f, 0.0f, -200.0f,  0.0f, 1.0f, 0.0f,  50.0f, 0.0f,
+         200.0f, 0.0f,  200.0f,  0.0f, 1.0f, 0.0f,  50.0f, 50.0f,
+        -200.0f, 0.0f,  200.0f,  0.0f, 1.0f, 0.0f,  0.0f, 50.0f
+    };
+
+    unsigned int groundIndices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    unsigned int VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(groundVertices), groundVertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(groundIndices), groundIndices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+
+    return VAO;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
