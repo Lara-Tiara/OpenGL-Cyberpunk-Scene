@@ -18,11 +18,11 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 
 // settings
-const unsigned int SCR_WIDTH = 1200;
-const unsigned int SCR_HEIGHT = 1200;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 // camera
-Camera camera(glm::vec3(0.0f, 2.0f, 15.0f));
+Camera camera(glm::vec3(0.0f, 5.0f, 30.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -84,11 +84,13 @@ int main()
 
     // load models
     // -----------
-    //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/corner_hut/model.dae");
+    //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/futuristic_city/scene.gltf");
+    //Model chopModel("D:/TCD/Computer-Graphics/Project1/resources/models/chop_house/scene.gltf");
     //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_2077_building/scene.gltf");
-    //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_noodle/scene.gltf");
-    Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/transformer_box/scene.gltf");
-    //Model ourModel("D:/TCD/Computer-Graphics/Project1/resources/models/character_free_model/scene.gltf");
+    Model noodleModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_noodle/scene.gltf");
+    Model transboxModel("D:/TCD/Computer-Graphics/Project1/resources/models/transformer_box/scene.gltf");
+    Model girlModel("D:/TCD/Computer-Graphics/Project1/resources/models/character_free_model/scene.gltf");
+    //Model cityModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_city/scene.glb");
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -116,17 +118,43 @@ int main()
         ourShader.use();
 
         // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
         glm::mat4 view = camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
-        // render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
+        // render the loaded models
+        // Model 1: City at center
+        /*
+        glm::mat4 model1 = glm::mat4(1.0f);
+        model1 = glm::translate(model1, glm::vec3(0.0f, -5.0f, -50.0f));
+        model1 = glm::scale(model1, glm::vec3(0.2f, 0.2f, 0.2f));
+        ourShader.setMat4("model", model1);
+        cityModel.Draw(ourShader);
+		*/
+
+        // Model 2: Transformer Box
+        glm::mat4 model2 = glm::mat4(1.0f);
+        model2 = glm::translate(model2, glm::vec3(20.0f, -10.0f, -10.0f));
+        model2 = glm::rotate(model2, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model2 = glm::scale(model2, glm::vec3(5.0f, 5.0f, 5.0f));
+        ourShader.setMat4("model", model2);
+        transboxModel.Draw(ourShader);
+
+        // Model 3: Girl Character
+        glm::mat4 model3 = glm::mat4(1.0f);
+        model3 = glm::translate(model3, glm::vec3(5.0f, -10.0f, 15.0f));
+        model3 = glm::rotate(model3, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model3 = glm::scale(model3, glm::vec3(0.1f, 0.1f, 0.1f));
+        ourShader.setMat4("model", model3);
+        girlModel.Draw(ourShader);
+
+        // Model 4: Noodle shop
+        glm::mat4 model4 = glm::mat4(1.0f);
+        model4 = glm::translate(model4, glm::vec3(-20.0f, -10.0f, -10.0f));
+        model4 = glm::scale(model4, glm::vec3(0.08f, 0.08f, 0.08f));
+        ourShader.setMat4("model", model4);
+        noodleModel.Draw(ourShader);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)

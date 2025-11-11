@@ -152,16 +152,16 @@ private:
         // normal: texture_normalN
 
         // 1. diffuse maps
-        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
         // 2. specular maps
-        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         // 3. normal maps
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         // 4. height maps
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", scene);
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         
         // return a mesh object created from the extracted mesh data
@@ -170,35 +170,95 @@ private:
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
     // the required info is returned as a Texture struct.
-    vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, string typeName)
+    vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName, const aiScene* scene)
     {
         vector<Texture> textures;
-        for(unsigned int i = 0; i < mat->GetTextureCount(type); i++)
+        for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
         {
             aiString str;
             mat->GetTexture(type, i, &str);
-            // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
+            const char* cpath = str.C_Str();
+
+            // de-dup
             bool skip = false;
-            for(unsigned int j = 0; j < textures_loaded.size(); j++)
+            for (unsigned int j = 0; j < textures_loaded.size(); j++)
             {
-                if(std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
+                if (std::strcmp(textures_loaded[j].path.data(), cpath) == 0)
                 {
                     textures.push_back(textures_loaded[j]);
-                    skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
+                    skip = true;
                     break;
                 }
             }
-            if(!skip)
-            {   // if texture hasn't been loaded already, load it
-                Texture texture;
-                texture.id = TextureFromFile(str.C_Str(), this->directory);
-                texture.type = typeName;
-                texture.path = str.C_Str();
-                textures.push_back(texture);
-                textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+            if (skip) continue;
+
+            Texture texture;
+            texture.type = typeName;
+            texture.path = cpath;
+
+            // embedded texture in GLB: paths like "*0", "*1", ...
+            if (cpath[0] == '*')
+            {
+                const aiTexture* emb = scene->GetEmbeddedTexture(cpath);
+                texture.id = TextureFromEmbedded(emb);
             }
+            else
+            {
+                texture.id = TextureFromFile(cpath, this->directory);
+            }
+
+            textures.push_back(texture);
+            textures_loaded.push_back(texture);
         }
         return textures;
+    }
+
+    static unsigned int MakeGLTextureRGBA8(const unsigned char* rgba, int w, int h) {
+        unsigned int tex = 0;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        return tex;
+    }
+
+    static unsigned int TextureFromEmbedded(const aiTexture* tex)
+    {
+        if (!tex) return 0;
+
+        if (tex->mHeight == 0) {
+            // compressed (png/jpg/etc.), mWidth is data size in bytes
+            int w = 0, h = 0, n = 0;
+            stbi_set_flip_vertically_on_load(false);
+            const unsigned char* mem = reinterpret_cast<const unsigned char*>(tex->pcData);
+            unsigned char* data = stbi_load_from_memory(mem, tex->mWidth, &w, &h, &n, STBI_rgb_alpha);
+            if (!data) {
+                std::cerr << "stbi_load_from_memory failed for embedded texture.\n";
+                return 0;
+            }
+            unsigned int out = MakeGLTextureRGBA8(data, w, h);
+            stbi_image_free(data);
+            return out;
+        }
+        else {
+            // uncompressed BGRA8 in aiTexel
+            const int w = tex->mWidth;
+            const int h = tex->mHeight;
+            std::vector<unsigned char> rgba(w * h * 4);
+            for (int i = 0; i < w * h; ++i) {
+                const aiTexel& t = tex->pcData[i];
+                rgba[4 * i + 0] = t.r;
+                rgba[4 * i + 1] = t.g;
+                rgba[4 * i + 2] = t.b;
+                rgba[4 * i + 3] = t.a;
+            }
+            return MakeGLTextureRGBA8(rgba.data(), w, h);
+        }
     }
 };
 
@@ -238,6 +298,54 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, boo
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     return textureID;
+}
+
+static unsigned int MakeGLTextureRGBA8(const unsigned char* rgba, int w, int h) {
+    unsigned int tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // avoid row alignment issues
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    return tex;
+}
+
+static unsigned int TextureFromEmbedded(const aiTexture* tex)
+{
+    if (!tex) return 0;
+
+    if (tex->mHeight == 0) {
+        // compressed (png/jpg/etc.), mWidth is data size in bytes
+        int w = 0, h = 0, n = 0;
+        stbi_set_flip_vertically_on_load(false); // glTF/GLB usually does not need flipping
+        const unsigned char* mem = reinterpret_cast<const unsigned char*>(tex->pcData);
+        unsigned char* data = stbi_load_from_memory(mem, tex->mWidth, &w, &h, &n, STBI_rgb_alpha);
+        if (!data) {
+            std::cerr << "stbi_load_from_memory failed for embedded texture.\n";
+            return 0;
+        }
+        unsigned int out = MakeGLTextureRGBA8(data, w, h);
+        stbi_image_free(data);
+        return out;
+    }
+    else {
+        // uncompressed BGRA8 in aiTexel
+        const int w = tex->mWidth;
+        const int h = tex->mHeight;
+        std::vector<unsigned char> rgba(w * h * 4);
+        for (int i = 0; i < w * h; ++i) {
+            const aiTexel& t = tex->pcData[i];
+            rgba[4 * i + 0] = t.r;
+            rgba[4 * i + 1] = t.g;
+            rgba[4 * i + 2] = t.b;
+            rgba[4 * i + 3] = t.a;
+        }
+        return MakeGLTextureRGBA8(rgba.data(), w, h);
+    }
 }
 
 #endif
