@@ -9,6 +9,7 @@
 
 #include "shader_m.h"
 #include "camera.h"
+#include "model.h"
 #include "model_animation.h"
 #include "animdata.h"
 
@@ -118,7 +119,7 @@ int main()
     Shader ourShader("1.model_loading.vs", "1.model_loading.fs");
     Shader animShader("anim_model.vs", "anim_model.fs");
     Shader groundShader("ground.vs", "ground.fs");
-    Shader neonShader("neon_billboard.vs", "neon_billboard.fs"); // 新增：专用霓虹 shader
+    Shader neonShader("neon_billboard.vs", "neon_billboard.fs");
 
     // load models
     // -----------
@@ -126,10 +127,14 @@ int main()
     Model transboxModel("D:/TCD/Computer-Graphics/Project1/resources/models/transformer_box/scene.gltf");
     Model VMModel("D:/TCD/Computer-Graphics/Project1/resources/models/ramen-vending-machine-1/scene.gltf");
     Model DJModel("D:/TCD/Computer-Graphics/Project1/resources/models/dji_fpv/scene.gltf");
+    //Model cityModel("D:/TCD/Computer-Graphics/Project1/resources/models/neon_city/scene.gltf");
+    //Model manModel("D:/TCD/Computer-Graphics/Project1/resources/models/Man/scene.gltf");
+    Model tvModel("D:/TCD/Computer-Graphics/Project1/resources/models/cyberpunk_tv/scene.gltf");
     
 
     std::cout << "\n=== Loading Character Model ===" << std::endl;
-    Model girlModel("D:/TCD/Computer-Graphics/Project1/resources/models/girl/character.gltf");
+    AnimatedModel girlModel("D:/TCD/Computer-Graphics/Project1/resources/models/girl/character.gltf");
+    //AnimatedModel manModel("D:/TCD/Computer-Graphics/Project1/resources/models/Man/scene.gltf");
 
     auto& boneInfoMap = girlModel.GetBoneInfoMap();
     int boneCount = girlModel.GetBoneCount();
@@ -235,19 +240,18 @@ int main()
         ourShader.setVec3("emissiveColor", glm::vec3(1.0f));
         ourShader.setFloat("emissiveIntensity", 0.0f);
         VMModel.Draw(ourShader);
-
-        // Model 5: DJI FPV Drone（放在面店左侧前方一点）
+        
+        // Model 5: DJI FPV Drone
         glm::mat4 modelDJ = glm::mat4(1.0f);
-        modelDJ = glm::translate(modelDJ, glm::vec3(-35.0f, -8.0f, 5.0f));
-        // 根据模型大小调整缩放
-        modelDJ = glm::scale(modelDJ, glm::vec3(2.5f, 2.5f, 2.5f));
-        // 如果模型需要旋转对齐，可按需添加旋转：例如绕X翻转直立
+        modelDJ = glm::translate(modelDJ, glm::vec3(-35.0f, 15.0f, 20.0f));
+        modelDJ = glm::scale(modelDJ, glm::vec3(0.05f, 0.05f, 0.05f));
         // modelDJ = glm::rotate(modelDJ, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         ourShader.setMat4("model", modelDJ);
-        // 无发光效果
         ourShader.setInt("isEmissive", 0);
         ourShader.setFloat("emissiveIntensity", 0.0f);
         DJModel.Draw(ourShader);
+        
+       
 
         // ============ 手臂摆动动画角色 ============
         animShader.use();

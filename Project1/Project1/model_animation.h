@@ -1,5 +1,5 @@
-#ifndef MODEL_H
-#define MODEL_H
+#ifndef ANIMATED_MODEL_H
+#define ANIMATED_MODEL_H
 
 #include <glad/glad.h> 
 
@@ -24,41 +24,35 @@
 
 using namespace std;
 
-class Model 
+class AnimatedModel 
 {
 public:
-    // model data 
-    vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
+    vector<Texture> textures_loaded;
     vector<Mesh>    meshes;
     string directory;
     bool gammaCorrection;
 	
-	
 
-    // constructor, expects a filepath to a 3D model.
-    Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
+    AnimatedModel(string const &path, bool gamma = false) : gammaCorrection(gamma)
     {
         loadModel(path);
     }
 
-    // draws the model, and thus all its meshes
     void Draw(Shader &shader)
     {
         for(unsigned int i = 0; i < meshes.size(); i++)
             meshes[i].Draw(shader);
     }
     
-    // 新增：带材质分类的绘制（用于动画角色，识别头发/透明材质）
     void DrawAnimated(Shader &shader)
     {
         for (unsigned int i = 0; i < meshes.size(); i++)
         {
-            int materialType = 0;       // default opaque
-            float alphaThreshold = 0.05f; // base threshold
+            int materialType = 0;
+            float alphaThreshold = 0.05f;
             bool isTransparent = false;
             bool isHair = false;
 
-            // 根据纹理路径名做简单启发式分类
             for (auto &tex : meshes[i].textures)
             {
                 std::string lower = tex.path;
@@ -76,12 +70,12 @@ public:
 
             if (isHair)
             {
-                materialType = 1; // hair
-                alphaThreshold = 0.02f; // 更低的剔除阈值
+                materialType = 1;
+                alphaThreshold = 0.02f;
             }
             else if (isTransparent)
             {
-                materialType = 7; // transparent
+                materialType = 7;
                 alphaThreshold = 0.03f;
             }
 
@@ -102,42 +96,30 @@ private:
 	std::map<string, BoneInfo> m_BoneInfoMap;
 	int m_BoneCounter = 0;
 
-    // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const &path)
     {
-        // read file via ASSIMP
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace);
-        // check for errors
-        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
+        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
             return;
         }
-        // retrieve the directory path of the filepath
         directory = path.substr(0, path.find_last_of('/'));
-
-        // process ASSIMP's root node recursively
         processNode(scene->mRootNode, scene);
     }
 
-    // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
     void processNode(aiNode *node, const aiScene *scene)
     {
-        // process each mesh located at the current node
         for(unsigned int i = 0; i < node->mNumMeshes; i++)
         {
-            // the node object only contains indices to index the actual objects in the scene. 
-            // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             meshes.push_back(processMesh(mesh, scene));
         }
-        // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++)
         {
             processNode(node->mChildren[i], scene);
         }
-
     }
 
 	void SetVertexBoneDataToDefault(Vertex& vertex)
@@ -183,17 +165,27 @@ private:
 		}
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        vector<Texture> baseColorMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_diffuse");
+        if (baseColorMaps.empty()) {
+            vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+            baseColorMaps.insert(baseColorMaps.end(), diffuseMaps.begin(), diffuseMaps.end());
+        }
+        textures.insert(textures.end(), baseColorMaps.begin(), baseColorMaps.end());
+
+        vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
+        if (normalMaps.empty()) {
+            vector<Texture> altNormals = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+            normalMaps.insert(normalMaps.end(), altNormals.begin(), altNormals.end());
+        }
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
-        // 新增：emissive 贴图
-        std::vector<Texture> emissiveMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive");
+
+        vector<Texture> emissiveMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive");
         textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
+
+        vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic");
+        vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness");
+        textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
 
 		ExtractBoneWeightForVertices(vertices,mesh,scene);
 
@@ -250,7 +242,6 @@ private:
 		}
 	}
 
-
 	unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false)
 	{
 		string filename = string(path);
@@ -263,13 +254,20 @@ private:
 		unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
 		if (data)
 		{
-			GLenum format;
+			GLenum format = GL_RGB;
 			if (nrComponents == 1)
 				format = GL_RED;
+			else if (nrComponents == 2)
+				format = GL_RG;
 			else if (nrComponents == 3)
 				format = GL_RGB;
 			else if (nrComponents == 4)
 				format = GL_RGBA;
+			else
+			{
+				std::cout << "Warning: unexpected channel count (" << nrComponents << ") for texture " << filename << ". Using GL_RGB." << std::endl;
+				format = GL_RGB;
+			}
 
 			glBindTexture(GL_TEXTURE_2D, textureID);
 			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -291,8 +289,6 @@ private:
 		return textureID;
 	}
     
-    // checks all material textures of a given type and loads the textures if they're not loaded yet.
-    // the required info is returned as a Texture struct.
     vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, string typeName)
     {
         vector<Texture> textures;
@@ -323,7 +319,6 @@ private:
         return textures;
     }
 };
-
 
 
 #endif

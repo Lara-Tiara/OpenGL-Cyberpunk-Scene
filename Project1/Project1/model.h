@@ -86,7 +86,6 @@ private:
 
     Mesh processMesh(aiMesh *mesh, const aiScene *scene)
     {
-        // data to fill
         vector<Vertex> vertices;
         vector<unsigned int> indices;
         vector<Texture> textures;
@@ -144,25 +143,36 @@ private:
         }
         // process materials
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];    
-        // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
-        // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
-        // Same applies to other texture as the following list summarizes:
-        // diffuse: texture_diffuseN
-        // specular: texture_specularN
-        // normal: texture_normalN
 
-        // 1. diffuse maps
-        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-        // 2. specular maps
+        // 1. base color / diffuse
+        vector<Texture> baseColorMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_diffuse", scene);
+        if (baseColorMaps.empty()) {
+            vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
+            baseColorMaps.insert(baseColorMaps.end(), diffuseMaps.begin(), diffuseMaps.end());
+        }
+        textures.insert(textures.end(), baseColorMaps.begin(), baseColorMaps.end());
+
+        // 2. specular (legacy)
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-        // 3. normal maps
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
+
+        // 3. normals
+        vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene);
+        if (normalMaps.empty()) {
+            vector<Texture> altNormals = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", scene);
+            normalMaps.insert(normalMaps.end(), altNormals.begin(), altNormals.end());
+        }
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-        // 4. height maps
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", scene);
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+
+        // 4. emissive
+        vector<Texture> emissiveMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", scene);
+        textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
+
+        // 5. metallic / roughness (optional)
+        vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", scene);
+        vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", scene);
+        textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         
         // return a mesh object created from the extracted mesh data
         return Mesh(vertices, indices, textures);
@@ -271,23 +281,56 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, boo
     glGenTextures(1, &textureID);
 
     int width = 0, height = 0, nrComponents = 0;
+    stbi_set_flip_vertically_on_load(false); // glTF 不需要翻转
 
-    stbi_set_flip_vertically_on_load(false);
-
-    unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, STBI_rgb_alpha);
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
+    // 不强制转换为 RGBA，允许获取真实通道数
+    unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
     if (!data)
     {
         std::cerr << "Texture failed to load: " << filename
-            << " (" << stbi_failure_reason() << ")\n";
+                  << " (" << stbi_failure_reason() << ")\n";
+        // fallback 1x1 粉色
         unsigned char fallback[4] = { 255, 0, 255, 255 };
+        glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, fallback);
     }
     else
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        GLenum format = GL_RGB; // 默认值，避免未初始化
+        GLenum internalFormat = GL_RGB;
+        if (nrComponents == 1)
+        {
+            format = GL_RED;
+            internalFormat = GL_RED;
+        }
+        else if (nrComponents == 2)
+        {
+            // metallicRoughness 等两通道贴图
+            format = GL_RG;
+            internalFormat = GL_RG;
+        }
+        else if (nrComponents == 3)
+        {
+            format = GL_RGB;
+            internalFormat = gamma ? GL_SRGB : GL_RGB;
+        }
+        else if (nrComponents == 4)
+        {
+            format = GL_RGBA;
+            internalFormat = gamma ? GL_SRGB_ALPHA : GL_RGBA;
+        }
+        else
+        {
+            std::cout << "Warning: texture " << filename
+                      << " has unexpected channel count: " << nrComponents
+                      << ", defaulting to GL_RGB" << std::endl;
+            format = GL_RGB;
+            internalFormat = GL_RGB;
+        }
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
     }
