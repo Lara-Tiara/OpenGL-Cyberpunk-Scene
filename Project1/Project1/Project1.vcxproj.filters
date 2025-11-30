@@ -76,6 +76,10 @@
     <None Include="1.model_loading.vs" />
     <None Include="ground.vs" />
     <None Include="ground.fs" />
+    <None Include="anim_model.vs" />
+    <None Include="anim_model.fs" />
+    <None Include="neon_billboard.fs" />
+    <None Include="neon_billboard.vs" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3dll.lib" />

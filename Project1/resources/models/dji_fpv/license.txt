@@ -1,0 +1,11 @@
+Model Information:
+* title:	DJI FPV
+* source:	https://sketchfab.com/3d-models/dji-fpv-7c5346e50ffb4e8c9ac12cb0847be39a
+* author:	polyman (https://sketchfab.com/Polyman_3D)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "DJI FPV" (https://sketchfab.com/3d-models/dji-fpv-7c5346e50ffb4e8c9ac12cb0847be39a) by polyman (https://sketchfab.com/Polyman_3D) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -48,6 +48,51 @@ public:
             meshes[i].Draw(shader);
     }
     
+    // 新增：带材质分类的绘制（用于动画角色，识别头发/透明材质）
+    void DrawAnimated(Shader &shader)
+    {
+        for (unsigned int i = 0; i < meshes.size(); i++)
+        {
+            int materialType = 0;       // default opaque
+            float alphaThreshold = 0.05f; // base threshold
+            bool isTransparent = false;
+            bool isHair = false;
+
+            // 根据纹理路径名做简单启发式分类
+            for (auto &tex : meshes[i].textures)
+            {
+                std::string lower = tex.path;
+                std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c){ return std::tolower(c); });
+                if (lower.find("hair") != std::string::npos || lower.find("ponytail") != std::string::npos)
+                {
+                    isHair = true;
+                    break;
+                }
+                if (lower.find("lash") != std::string::npos || lower.find("brow") != std::string::npos || lower.find("trans") != std::string::npos)
+                {
+                    isTransparent = true;
+                }
+            }
+
+            if (isHair)
+            {
+                materialType = 1; // hair
+                alphaThreshold = 0.02f; // 更低的剔除阈值
+            }
+            else if (isTransparent)
+            {
+                materialType = 7; // transparent
+                alphaThreshold = 0.03f;
+            }
+
+            shader.setInt("materialType", materialType);
+            shader.setFloat("alphaThreshold", alphaThreshold);
+            shader.setBool("useAdvancedAlpha", true);
+
+            meshes[i].Draw(shader);
+        }
+    }
+    
 	auto& GetBoneInfoMap() { return m_BoneInfoMap; }
 	int& GetBoneCount() { return m_BoneCounter; }
 	
@@ -138,14 +183,17 @@ private:
 		}
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-		vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-		vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-		std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-		std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-		textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        // 新增：emissive 贴图
+        std::vector<Texture> emissiveMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive");
+        textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
 
 		ExtractBoneWeightForVertices(vertices,mesh,scene);
 
@@ -252,25 +300,24 @@ private:
         {
             aiString str;
             mat->GetTexture(type, i, &str);
-            // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
             bool skip = false;
             for(unsigned int j = 0; j < textures_loaded.size(); j++)
             {
                 if(std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
                 {
                     textures.push_back(textures_loaded[j]);
-                    skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
+                    skip = true;
                     break;
                 }
             }
             if(!skip)
-            {   // if texture hasn't been loaded already, load it
+            {
                 Texture texture;
                 texture.id = TextureFromFile(str.C_Str(), this->directory);
                 texture.type = typeName;
                 texture.path = str.C_Str();
                 textures.push_back(texture);
-                textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+                textures_loaded.push_back(texture);
             }
         }
         return textures;

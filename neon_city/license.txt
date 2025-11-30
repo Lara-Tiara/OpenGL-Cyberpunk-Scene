@@ -1,0 +1,11 @@
+Model Information:
+* title:	neon city
+* source:	https://sketchfab.com/3d-models/neon-city-f9f21b4ae3104bebabcf75630009d1fc
+* author:	adamnsexyname (Pieter) (https://sketchfab.com/adamnsexyname)
+
+Model License:
+* license type:	CC-BY-NC-ND-4.0 (http://creativecommons.org/licenses/by-nc-nd/4.0/)
+* requirements:	Author must be credited. No commercial use. Modified versions can not be distributed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "neon city" (https://sketchfab.com/3d-models/neon-city-f9f21b4ae3104bebabcf75630009d1fc) by adamnsexyname (Pieter) (https://sketchfab.com/adamnsexyname) licensed under CC-BY-NC-ND-4.0 (http://creativecommons.org/licenses/by-nc-nd/4.0/)
