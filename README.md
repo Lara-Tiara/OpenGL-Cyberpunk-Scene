@@ -37,8 +37,8 @@
 
 ## Demo Video (optional)
 
-- YouTube / Bilibili link: **[TODO]**
-- Local file in repo (if any): `docs/demo/demo.mp4` (**TODO**)
+- YouTube link: https://youtu.be/zzhgN1XvLjY
+- Local file in repo: `Project1.zip` (**TODO**)
 
 ---
 
