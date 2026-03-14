@@ -14,14 +14,14 @@
 ## Gallery / Screenshots
 
 
-<!-- Replace paths with your own images -->
+
 <p align="center">
-  <img src="docs/images/scene_overview.png" width="85%" alt="Scene Overview"/>
+  <img src="whole_scene.PNG" width="85%" alt="Whole Scene Overview"/>
 </p>
 
 <p align="center">
-  <img src="docs/images/neon_closeup.png" width="42%" alt="Neon Close-up"/>
-  <img src="docs/images/floating_car.png" width="42%" alt="Floating Car"/>
+  <img src="successful_texture.PNG" width="42%" alt="Successful Texture Close-up"/>
+  <img src="lightVM.PNG" width="42%" alt="Lighting / Neon Effect"/>
 </p>
 
 <!-- More slots -->
