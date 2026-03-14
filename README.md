@@ -106,16 +106,7 @@
 ## Build & Run
 
 ### Prerequisites
-- CMake (recommended)
 - A C++17-capable compiler (MSVC / clang / gcc)
 - GPU driver supporting OpenGL 3.3+
 
-### Build (CMake)
-```bash
-git clone <YOUR_REPO_URL>
-cd <YOUR_REPO_FOLDER>
 
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
