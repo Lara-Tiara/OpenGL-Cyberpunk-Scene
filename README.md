@@ -13,7 +13,6 @@
 
 ## Gallery / Screenshots
 
-> Put your best screenshots here.
 
 <!-- Replace paths with your own images -->
 <p align="center">
