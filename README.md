@@ -34,10 +34,10 @@
 
 ---
 
-## Demo Video (optional)
+## Demo Video
 
 - YouTube link: https://youtu.be/zzhgN1XvLjY
-- Local file in repo: `Project1.zip` (**TODO**)
+- Local file in repo: `Project1.zip` 
 
 ---
 
